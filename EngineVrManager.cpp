@@ -629,7 +629,6 @@ void EngineVrManager::RenderRt(vr::Hmd_Eye nEye, float dt)
 
 wi::graphics::Texture EngineVrManager::resizeImage(const wi::graphics::Texture& image, int width, int height)
 {
-	wi::graphics::Texture returnTexture;
 	wi::graphics::Texture renderTargetResize = {};
 
 	if (image.IsValid())

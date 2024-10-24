@@ -217,14 +217,14 @@ void EngineVrManager::updateVrSession( float dt)
 
 void EngineVrManager::getControllerActions(vr::VRControllerState_t state, int unDevice, float dt)
 {
-	//if undevice == 1 left or ==2 right	
-	if (unDevice == 1 || unDevice == 2)
+	//touchpad left or right
+	if (hmd->GetControllerRoleForTrackedDeviceIndex(unDevice) == vr::TrackedControllerRole_LeftHand || hmd->GetControllerRoleForTrackedDeviceIndex(unDevice) == vr::TrackedControllerRole_RightHand)
 	{
-		if (unDevice == 1)
+		if (hmd->GetControllerRoleForTrackedDeviceIndex(unDevice) == vr::TrackedControllerRole_LeftHand)
 		{
 			controllerVR.controllerDir = CONTROLLER::TOUCHPAD_LEFT;
 		}
-		else if (unDevice == 2)
+		else if (hmd->GetControllerRoleForTrackedDeviceIndex(unDevice) == vr::TrackedControllerRole_RightHand)
 		{
 			controllerVR.controllerDir = CONTROLLER::TOUCHPAD_RIGHT;
 		}
@@ -250,7 +250,7 @@ void EngineVrManager::getControllerActions(vr::VRControllerState_t state, int un
 		if (state.ulButtonPressed & vr::ButtonMaskFromId((vr::EVRButtonId)7))//X et A
 		{
 			controllerVR.butonState = true;
-			if (unDevice == 1)
+			if (hmd->GetControllerRoleForTrackedDeviceIndex(unDevice) == vr::TrackedControllerRole_LeftHand)
 			{
 				controllerVR.controller = CONTROLLER::BUTTON_X;
 			}
@@ -263,7 +263,7 @@ void EngineVrManager::getControllerActions(vr::VRControllerState_t state, int un
 		if (state.ulButtonPressed & vr::ButtonMaskFromId((vr::EVRButtonId)2))//Y et B
 		{
 			controllerVR.butonState = true;
-			if (unDevice == 1)
+			if (hmd->GetControllerRoleForTrackedDeviceIndex(unDevice) == vr::TrackedControllerRole_LeftHand)
 			{
 				controllerVR.controller = CONTROLLER::BUTTON_Y;
 			}
@@ -276,7 +276,7 @@ void EngineVrManager::getControllerActions(vr::VRControllerState_t state, int un
 		if (state.ulButtonPressed & vr::ButtonMaskFromId((vr::EVRButtonId)33))//Trigger
 		{
 			controllerVR.butonState = true;
-			if (unDevice == 1)
+			if (hmd->GetControllerRoleForTrackedDeviceIndex(unDevice) == vr::TrackedControllerRole_LeftHand)
 			{
 				controllerVR.controller = CONTROLLER::BUTTON_TRIGGER_LEFT_B;
 			}

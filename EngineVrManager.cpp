@@ -611,6 +611,7 @@ void EngineVrManager::RenderRt(vr::Hmd_Eye nEye, float dt)
 		renderPathLeft.PreUpdate();
 		renderPathLeft.Update(dt);
 		renderPathLeft.PostUpdate();
+		renderPathLeft.PreRender();
 		renderPathLeft.Render();
 		rtLeftTexture = resizeImage(*renderPathLeft.lastPostprocessRT, widthTexture, heightTexture);
 	}
@@ -622,6 +623,7 @@ void EngineVrManager::RenderRt(vr::Hmd_Eye nEye, float dt)
 		renderPathRight.PreUpdate();
 		renderPathRight.Update(dt);
 		renderPathRight.PostUpdate();
+		renderPathRight.PreRender();
 		renderPathRight.Render();
 		rtRightTexture = resizeImage(*renderPathRight.lastPostprocessRT, widthTexture, heightTexture);
 	}
@@ -674,3 +676,4 @@ wi::graphics::Texture EngineVrManager::resizeImage(const wi::graphics::Texture& 
 
 	return renderTargetResize;
 }
+

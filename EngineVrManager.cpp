@@ -1,22 +1,37 @@
-#include <stdafx.h>
+//#include <stdafx.h>
 #include "WickedEngine.h"
 #include "EngineVrManager.h"
 #include <algorithm>
 
 EngineVrManager* EngineVrManager::instance = nullptr;
 
-EngineVrManager::EngineVrManager() {};
+EngineVrManager::EngineVrManager(){}
 
 EngineVrManager::~EngineVrManager() {};
 
-void EngineVrManager::startVrSession()
+void EngineVrManager::startVrSession(wi::scene::Scene& scene)
 {
+	sceneVR = &scene;
+
 	//Disable VSync
 	wi::eventhandler::SetVSync(false);
 
 	if (dynamic_cast<wi::graphics::GraphicsDevice_DX12*>(wi::graphics::GetDevice()))
 	{
 		dx12 = true;
+	}
+
+	if (rightHand == wi::ecs::INVALID_ENTITY)
+	{
+		wi::scene::LoadModel(scene, "hands/right.wiscene");
+		rightHand = scene.Entity_FindByName("RightHand");
+		
+	}
+
+	if (leftHand == wi::ecs::INVALID_ENTITY)
+	{
+		wi::scene::LoadModel(scene, "hands/left.wiscene");
+		leftHand = scene.Entity_FindByName("LeftHand");
 	}
 
 	//save value of camera before VR session
@@ -42,25 +57,23 @@ void EngineVrManager::startVrSession()
 		stopVrSession();
 		return;
 	}
-	
+
 	std::string m_strDriver = "No Driver";
 	std::string m_strDisplay = "No Display";
 
 	m_strDriver = GetTrackedDeviceString(hmd, vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_TrackingSystemName_String);
 	m_strDisplay = GetTrackedDeviceString(hmd, vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_SerialNumber_String);
 
-	hmd->GetRecommendedRenderTargetSize(&widthTexture,&heightTexture);
+	hmd->GetRecommendedRenderTargetSize(&widthTexture, &heightTexture);
 
 	mat4ProjectionLeft = GetHMDMatrixProjectionEye(vr::Eye_Left);
 	mat4ProjectionRight = GetHMDMatrixProjectionEye(vr::Eye_Right);
 	mat4eyePosLeft = GetHMDMatrixPoseEye(vr::Eye_Left);
 	mat4eyePosRight = GetHMDMatrixPoseEye(vr::Eye_Right);
 
-	memset(devClassChar, 0, sizeof(devClassChar));
-
 	if (!vr::VRCompositor())
 	{
-		wi::backlog::post("Compositor initialization failed.\n",wi::backlog::LogLevel::Error);
+		wi::backlog::post("Compositor initialization failed.\n", wi::backlog::LogLevel::Error);
 	}
 
 	isVrRunning = true;
@@ -68,6 +81,18 @@ void EngineVrManager::startVrSession()
 
 void EngineVrManager::stopVrSession()
 {
+	if (leftHand != wi::ecs::INVALID_ENTITY)
+	{
+		sceneVR->Entity_Remove(leftHand, true);
+		leftHand = wi::ecs::INVALID_ENTITY;
+	}
+
+	if (rightHand != wi::ecs::INVALID_ENTITY)
+	{
+		sceneVR->Entity_Remove(rightHand, true);
+		rightHand = wi::ecs::INVALID_ENTITY;
+	}
+
 	isVrRunning = false;
 	if (hmd != nullptr)
 	{
@@ -101,10 +126,10 @@ void EngineVrManager::stopVrSession()
 void EngineVrManager::createVrCameras()
 {
 	if (
-		cameraEntityLeft == wi::ecs::INVALID_ENTITY || 
-		cameraEntityRight == wi::ecs::INVALID_ENTITY || 
+		cameraEntityLeft == wi::ecs::INVALID_ENTITY ||
+		cameraEntityRight == wi::ecs::INVALID_ENTITY ||
 		(wi::scene::GetScene().cameras.GetComponent(cameraEntityLeft) == nullptr &&
-		wi::scene::GetScene().cameras.GetComponent(cameraEntityRight) == nullptr))
+			wi::scene::GetScene().cameras.GetComponent(cameraEntityRight) == nullptr))
 	{
 		cameraEntityLeft = wi::ecs::CreateEntity();
 		cameraEntityRight = wi::ecs::CreateEntity();
@@ -131,7 +156,7 @@ void EngineVrManager::createVrCameras()
 	}
 }
 
-void EngineVrManager::updateVrSession( float dt)
+void EngineVrManager::updateVrSession(float dt)
 {
 	if (isVrRunning && hmd != nullptr)
 	{
@@ -154,8 +179,9 @@ void EngineVrManager::updateVrSession( float dt)
 			wi::backlog::post("Error waiting for compositor pose", wi::backlog::LogLevel::Error);
 		}
 
-		int validPoseCount = 0;
-		std::string strPoseClasses = "";
+		int leftIndex = -1;
+		int rightIndex = -1;
+
 		for (int nDevice = 0; nDevice < vr::k_unMaxTrackedDeviceCount; ++nDevice)
 		{
 			if (trackedDevicePose[nDevice].bPoseIsValid)
@@ -163,22 +189,58 @@ void EngineVrManager::updateVrSession( float dt)
 				if (!hmd->IsTrackedDeviceConnected(nDevice))
 					continue;
 
-				validPoseCount++;
 				mat4DevicePose[nDevice] = ConvertSteamVRMatrixToXMMATRIX(trackedDevicePose[nDevice].mDeviceToAbsoluteTracking);
 
-				if (devClassChar[nDevice] == 0)
+				vr::ETrackedDeviceClass tDeviceClass = hmd->GetTrackedDeviceClass(nDevice);
+
+				if (tDeviceClass == vr::TrackedDeviceClass_Controller || tDeviceClass == vr::TrackedDeviceClass_GenericTracker)
 				{
-					switch (hmd->GetTrackedDeviceClass(nDevice))
+					vr::ETrackedControllerRole role = hmd->GetControllerRoleForTrackedDeviceIndex(nDevice);
+
+					if (role == vr::TrackedControllerRole_LeftHand)
 					{
-					case vr::TrackedDeviceClass_Controller:        devClassChar[nDevice] = 'C'; break;
-					case vr::TrackedDeviceClass_HMD:               devClassChar[nDevice] = 'H'; break;
-					case vr::TrackedDeviceClass_Invalid:           devClassChar[nDevice] = 'I'; break;
-					case vr::TrackedDeviceClass_GenericTracker:    devClassChar[nDevice] = 'G'; break;
-					case vr::TrackedDeviceClass_TrackingReference: devClassChar[nDevice] = 'T'; break;
-					default:                                       devClassChar[nDevice] = '?'; break;
+						leftIndex = nDevice;
+					}
+					else
+					{
+						if (role == vr::TrackedControllerRole_RightHand)
+						{
+							rightIndex = nDevice;
+						}
+					}
+
+					if (rightIndex >= 0 && trackedDevicePose[rightIndex].bPoseIsValid && sceneVR != nullptr)
+					{
+						vr::HmdMatrix34_t mat = trackedDevicePose[rightIndex].mDeviceToAbsoluteTracking;
+						wi::scene::TransformComponent* rightHandTransform = sceneVR->transforms.GetComponent(rightHand);
+						if (rightHandTransform != nullptr)
+						{
+							rightHandTransform->ClearTransform();
+							rightHandTransform->Rotate(XMFLOAT4(0.7071f, 0.7071f, 0.0f, 0.0f));
+							rightHandTransform->Translate(XMFLOAT3(-0.01f, 0.02f, -0.09f));
+							rightHandTransform->UpdateTransform();
+							XMMATRIX controllerPose = ConvertSteamVRMatrixToXMMATRIX(mat) * XMLoadFloat4x4(&cameraTransform.world);
+							rightHandTransform->MatrixTransform(controllerPose);
+							rightHandTransform->UpdateTransform();
+						}
+					}
+
+					if (leftIndex >= 0 && trackedDevicePose[leftIndex].bPoseIsValid && sceneVR != nullptr)
+					{
+						vr::HmdMatrix34_t mat = trackedDevicePose[leftIndex].mDeviceToAbsoluteTracking;
+						wi::scene::TransformComponent* leftHandTransform = sceneVR->transforms.GetComponent(leftHand);
+						if (leftHandTransform != nullptr)
+						{
+							leftHandTransform->ClearTransform();
+							leftHandTransform->Rotate(XMFLOAT4(-0.7071f, 0.7071f, 0.0f, 0.0f));
+							leftHandTransform->Translate(XMFLOAT3(0.01f,0.02f,-0.09f));
+							leftHandTransform->UpdateTransform();
+							XMMATRIX controllerPose = ConvertSteamVRMatrixToXMMATRIX(mat) * XMLoadFloat4x4(&cameraTransform.world);
+							leftHandTransform->MatrixTransform(controllerPose);
+							leftHandTransform->UpdateTransform();
+						}
 					}
 				}
-				strPoseClasses += devClassChar[nDevice];
 			}
 		}
 
@@ -244,7 +306,7 @@ void EngineVrManager::getControllerActions(vr::VRControllerState_t state, int un
 				y = 0.0f;
 			}
 
-			controllerVR.axis = XMFLOAT2(state.rAxis[0].x,state.rAxis[0].y);
+			controllerVR.axis = XMFLOAT2(state.rAxis[0].x, state.rAxis[0].y);
 		}
 
 		if (state.ulButtonPressed & vr::ButtonMaskFromId((vr::EVRButtonId)7))//X et A
@@ -502,9 +564,9 @@ void EngineVrManager::render(float dt)
 	if (isVrSessionActive())
 	{
 		wi::scene::CameraComponent* cameraVR = wi::scene::GetScene().cameras.GetComponent(cameraEntityLeft);
-		
+
 		XMFLOAT4X4 mpj;
-		XMMATRIX finalMatrix= XMMatrixIdentity();
+		XMMATRIX finalMatrix = XMMatrixIdentity();
 
 		if (cameraVR != nullptr)
 		{
@@ -676,4 +738,3 @@ wi::graphics::Texture EngineVrManager::resizeImage(const wi::graphics::Texture& 
 
 	return renderTargetResize;
 }
-

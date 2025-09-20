@@ -309,7 +309,33 @@ void EngineVrManager::getControllerActions(vr::VRControllerState_t state, int un
 			controllerVR.axis = XMFLOAT2(state.rAxis[0].x, state.rAxis[0].y);
 		}
 
-		if (state.ulButtonPressed & vr::ButtonMaskFromId((vr::EVRButtonId)7))//X et A
+		if (state.ulButtonPressed & vr::ButtonMaskFromId((vr::EVRButtonId)33))//Trigger
+		{
+			controllerVR.butonState = true;
+			if (hmd->GetControllerRoleForTrackedDeviceIndex(unDevice) == vr::TrackedControllerRole_LeftHand)
+			{
+				controllerVR.controller = CONTROLLER::BUTTON_TRIGGER_LEFT;
+			}
+			else
+			{
+				controllerVR.controller = CONTROLLER::BUTTON_TRIGGER_RIGHT;
+			}
+		}
+
+		if (state.ulButtonPressed & vr::ButtonMaskFromId((vr::EVRButtonId)2))//Grip
+		{
+			controllerVR.butonState = true;
+			if (hmd->GetControllerRoleForTrackedDeviceIndex(unDevice) == vr::TrackedControllerRole_LeftHand)
+			{
+				controllerVR.controller = CONTROLLER::BUTTON_GRIP_LEFT;
+			}
+			else
+			{
+				controllerVR.controller = CONTROLLER::BUTTON_GRIP_RIGHT;
+			}
+		}
+
+		if (state.ulButtonPressed & vr::ButtonMaskFromId((vr::EVRButtonId)7))//X,A
 		{
 			controllerVR.butonState = true;
 			if (hmd->GetControllerRoleForTrackedDeviceIndex(unDevice) == vr::TrackedControllerRole_LeftHand)
@@ -322,7 +348,7 @@ void EngineVrManager::getControllerActions(vr::VRControllerState_t state, int un
 			}
 		}
 
-		if (state.ulButtonPressed & vr::ButtonMaskFromId((vr::EVRButtonId)2))//Y et B
+		if (state.ulButtonPressed & vr::ButtonMaskFromId((vr::EVRButtonId)1))//Y,B
 		{
 			controllerVR.butonState = true;
 			if (hmd->GetControllerRoleForTrackedDeviceIndex(unDevice) == vr::TrackedControllerRole_LeftHand)
@@ -335,27 +361,96 @@ void EngineVrManager::getControllerActions(vr::VRControllerState_t state, int un
 			}
 		}
 
-		if (state.ulButtonPressed & vr::ButtonMaskFromId((vr::EVRButtonId)33))//Trigger
-		{
-			controllerVR.butonState = true;
-			if (hmd->GetControllerRoleForTrackedDeviceIndex(unDevice) == vr::TrackedControllerRole_LeftHand)
-			{
-				controllerVR.controller = CONTROLLER::BUTTON_TRIGGER_LEFT_B;
-			}
-			else
-			{
-				controllerVR.controller = CONTROLLER::BUTTON_TRIGGER_RIGHT_B;
-			}
-		}
+		//only for debug buttons ID
+		//for (int id = 0; id < 64; ++id) {
+		//	vr::EVRButtonId bid = static_cast<vr::EVRButtonId>(id);
+		//	uint64_t mask = vr::ButtonMaskFromId(bid);
+		//	vr::VRControllerState_t state;
+		//	if (hmd->GetControllerState(unDevice, &state, sizeof(state))) {
+		//		bool pressed = (state.ulButtonPressed & mask) != 0;
+		//		if (pressed) {
+		//			printf("ButtonId %d appuyé\n", id);
+		//		}
+		//	}
+		//}
 	}
 
 	//moveVrFromTouchs(dt);
+	animateVrHands(dt);
 
 	controllerVR.axis.x = 0.0f;
 	controllerVR.axis.y = 0.0f;
 	controllerVR.butonState = false;
 	controllerVR.controller = CONTROLLER::NONE;
 	controllerVR.controllerDir = CONTROLLER::NONE;
+}
+
+void EngineVrManager::animateVrHands(float dt)
+{
+	if (sceneVR != nullptr)
+	{
+		wi::ecs::Entity leftAnim = sceneVR->Entity_FindByName("LeftAnim");
+		if (leftAnim != wi::ecs::INVALID_ENTITY)
+		{
+			wi::scene::AnimationComponent* leftHandAnimation = sceneVR->animations.GetComponent(leftAnim);
+			if (leftHandAnimation != nullptr)
+			{
+				leftHandAnimation->start = 0.0f;
+				leftHandAnimation->end = 1.0f;
+				leftHandAnimation->speed = 1.5f;
+				leftHandAnimation->Play();
+				leftHandAnimation->SetLooped(false);
+
+				if (isButtonTriggerLeft())
+				{
+					if (leftHandAnimation->timer < leftHandAnimation->end)
+					{
+						leftHandAnimation->timer += dt * leftHandAnimation->speed; // avancer timer
+						if (leftHandAnimation->timer > leftHandAnimation->end) leftHandAnimation->timer = leftHandAnimation->end;
+					}
+				}
+				else
+				{
+					if (leftHandAnimation->timer > leftHandAnimation->start)
+					{
+						leftHandAnimation->timer -= dt * leftHandAnimation->speed; // reculer timer
+						if (leftHandAnimation->timer < leftHandAnimation->start) leftHandAnimation->timer = leftHandAnimation->start;
+					}
+				}
+			}
+		}
+
+		wi::ecs::Entity rightAnim = sceneVR->Entity_FindByName("RightAnim");
+		if (rightAnim != wi::ecs::INVALID_ENTITY)
+		{
+			wi::scene::AnimationComponent* rightHandAnimation = sceneVR->animations.GetComponent(rightAnim);
+			if (rightHandAnimation != nullptr)
+			{
+				rightHandAnimation->start = 0.0f;
+				rightHandAnimation->end = 1.0f;
+				rightHandAnimation->speed = 1.5f;
+				rightHandAnimation->SetLooped(false);
+				rightHandAnimation->Play();
+
+				if (isButtonTriggerRight())
+				{
+					if (rightHandAnimation->timer < rightHandAnimation->end)
+					{
+						rightHandAnimation->timer += dt * rightHandAnimation->speed; // avancer timer
+						if (rightHandAnimation->timer > rightHandAnimation->end) rightHandAnimation->timer = rightHandAnimation->end;
+					}
+				}
+				else
+				{
+					if (rightHandAnimation->timer > rightHandAnimation->start)
+					{
+						rightHandAnimation->timer -= dt * rightHandAnimation->speed; // reculer timer
+						if (rightHandAnimation->timer < rightHandAnimation->start) rightHandAnimation->timer = rightHandAnimation->start;
+					}
+				}
+			}
+		}
+	}
 }
 
 //void EngineVrManager::moveVrFromTouchs(float dt)
@@ -459,40 +554,40 @@ bool EngineVrManager::isButtonB()
 	return returnValue;
 }
 
-bool EngineVrManager::isButtonTriggerLeftA()
+bool EngineVrManager::isButtonTriggerLeft()
 {
 	bool returnValue = false;
-	if (controllerVR.butonState && controllerVR.controller == CONTROLLER::BUTTON_TRIGGER_LEFT_A)
+	if (controllerVR.butonState && controllerVR.controller == CONTROLLER::BUTTON_TRIGGER_LEFT)
 	{
 		returnValue = true;
 	}
 	return returnValue;
 }
 
-bool EngineVrManager::isButtonTriggerLeftB()
+bool EngineVrManager::isButtonTriggerRight()
 {
 	bool returnValue = false;
-	if (controllerVR.butonState && controllerVR.controller == CONTROLLER::BUTTON_TRIGGER_LEFT_B)
+	if (controllerVR.butonState && controllerVR.controller == CONTROLLER::BUTTON_TRIGGER_RIGHT)
 	{
 		returnValue = true;
 	}
 	return returnValue;
 }
 
-bool EngineVrManager::isButtonTriggerRightA()
+bool EngineVrManager::isButtonGripLeft()
 {
 	bool returnValue = false;
-	if (controllerVR.butonState && controllerVR.controller == CONTROLLER::BUTTON_TRIGGER_RIGHT_A)
+	if (controllerVR.butonState && controllerVR.controller == CONTROLLER::BUTTON_GRIP_LEFT)
 	{
 		returnValue = true;
 	}
 	return returnValue;
 }
 
-bool EngineVrManager::isButtonTriggerRightB()
+bool EngineVrManager::isButtonGripRight()
 {
 	bool returnValue = false;
-	if (controllerVR.butonState && controllerVR.controller == CONTROLLER::BUTTON_TRIGGER_RIGHT_B)
+	if (controllerVR.butonState && controllerVR.controller == CONTROLLER::BUTTON_GRIP_RIGHT)
 	{
 		returnValue = true;
 	}

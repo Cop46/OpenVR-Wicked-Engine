@@ -39,6 +39,7 @@ public:
 	bool isVrSessionActive();
 	void render(float dt);
 	//void moveVrFromTouchs(float dt);
+	void animateVrHands(float dt);
 
 	bool isLeftPadPressed();
 	bool isRightPadPressed();
@@ -51,10 +52,10 @@ public:
 	bool isButtonHome();
 	bool isButtonA();
 	bool isButtonB();
-	bool isButtonTriggerLeftA();
-	bool isButtonTriggerLeftB();
-	bool isButtonTriggerRightA();
-	bool isButtonTriggerRightB();
+	bool isButtonTriggerLeft();
+	bool isButtonTriggerRight();
+	bool isButtonGripLeft();
+	bool isButtonGripRight();
 
 private:
 	static EngineVrManager* instance;
@@ -70,10 +71,10 @@ private:
 		BUTTON_B,
 		BUTTON_HOME,
 		BUTTON_MENU,
-		BUTTON_TRIGGER_LEFT_A,
-		BUTTON_TRIGGER_LEFT_B,
-		BUTTON_TRIGGER_RIGHT_A,
-		BUTTON_TRIGGER_RIGHT_B
+		BUTTON_TRIGGER_LEFT,
+		BUTTON_GRIP_LEFT,
+		BUTTON_TRIGGER_RIGHT,
+		BUTTON_GRIP_RIGHT
 	};
 
 	struct Control
